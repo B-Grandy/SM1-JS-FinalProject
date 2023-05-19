@@ -1,0 +1,773 @@
+<!--
+	This is a sample layout, you can follow this, however feel free to create your own unique layout, you do not have to follow this layout. 
+	(I encourage you to create your own webpage from scratch)
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Project</title>
+
+	<style>
+		body {
+			background-color: #faebd7;
+			font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Verdana, sans-serif;
+		}
+		.tableStore {
+			text-align: center;
+		}
+		h1 {
+			text-align: center;
+			font-size: 40px;
+			color: rgb(202, 24, 24);
+			margin-left: 30px;
+			font-family: Arial, Helvetica, sans-serif;
+			font-weight: bolder;
+		}
+		legend {
+			display: block;
+			width: auto;
+			text-align: center;
+			font-size: larger;
+		}
+		img {
+			width: 50px;
+			height: 25px;
+		}
+		.myPhoto {
+			width: 150px;
+			height: 125px;
+		}
+		.pointer {
+			cursor: pointer;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Best Pet 4 Life</h1>
+	<span id="dateArea" style="float: right;">Date/Time</span>
+	<br />
+	<span style="float: right;">
+		Currency:
+		<img id="flagImage" src="flags/CANADA.png" alt="Flag" />
+		<select id="currencySelector" class="pointer" onchange="currencyChange()">
+			<option selected value="CAD">CAD</option>
+			<option value="USD">USD</option>
+		</select>
+	</span>
+	<br><br>
+	<fieldset>
+		<legend>Store Items</legend>
+		<select id="displayFilter" class="pointer" onchange="displayStoreItems();">
+			<option>All</option>
+
+		</select>
+		<br />
+		<div id="inventoryOutput"></div>
+	</fieldset>
+	<br>
+	<fieldset>
+		<legend>Select Items</legend>
+		<p>
+			Item ID: <input type="text" id="addItemId" />
+			&nbsp;
+			<span id="addIDValidationMessage"></span>
+		</p>
+		<p>
+			Qty: <input type="number" id="addItemQty" />
+			&nbsp;
+			<span id="addQtyValidationMessage"></span>
+		</p>
+		<p>
+			<input type="button" value="Item Details" class="pointer" id="detailsbtn" />
+			<input type="button" value="Add Item" class="pointer" id="addItembtn" />
+			<input type="button" value="Remove Item" class="pointer" id="removebtn" />
+		<div id=error1 style="color:#CC0000; font-weight:bold;"></div>
+		</p>
+	</fieldset>
+	<br>
+	<fieldset>
+		<legend>Your Cart</legend>
+		<br>
+		<div id="cartOutput"></div>
+		<br>
+		<div id="cartCheckout"></div>
+	</fieldset>
+	<br>
+	<fieldset>
+		<legend>Review an Item</legend>
+		<p>Product ID: <input type="text" id="reviewId" />&nbsp;<span id="reviewIdMsg"></span></p>
+		<p>Review: <input type="text" id="reviewDesc" size="100" /></p>
+		<p>Rating: <input type="number" id="reviewNum" />&nbsp;<span id="addRatingValidationMessage"></span></p>
+		<p><input type="button" value="Review" class="pointer" id="addReviewbtn" /></p>
+		<div id="error" style="color:#CC0000; font-weight:bold;"></div>
+
+	</fieldset>
+
+	<!-- Javascript -->
+
+	<script>
+		/* Name: B.Grandy
+		   Date: 2022-04-22
+		   Class: Javascript 1
+		*/
+
+		// Create Constructors STORE ITEM/ CART ITEM/ REVIEW ITEM 
+
+		function StoreItem(id, name, price, quantity, maxPerCustomer, category, shippingCost, reviews, description, image) {
+			this.id = id; // String - id for product
+			this.name = name; // String - name of product
+			this.price = price; //Number - price of item
+			this.quantity = quantity; // Number - total amount of item availability
+			this.maxPerCustomer = maxPerCustomer; // Number - max quantity allowed IN CART
+			this.category = category; // String - category of the item
+			this.shippingCost = shippingCost; // Number - shipping cost
+			this.reviews = reviews;  // ARRAY - containing review objects
+			this.description = description; // String - product description
+			this.image = image; // String- link to image file	
+			this.rateAvg = 0;
+
+			// FIND THE REVIEW OF THE SPECIFIC ITEM. INCREMENT COUNT PER REVIEW, ALSO RESET THE STRING SO WILL ADD EACH REVIEW WHEN ITEM DETAILS IS CLICKED AGAIN
+			this.customerReview = function () {
+				var displayReview = "";
+				for (var i = 0; i < this.reviews.length; i++) {
+					var count = i;
+					count = count + 1;
+					displayReview += ("Review #" + count + ":" + this.reviews[i].review + "\n");
+				}
+				return displayReview;
+			};
+		}
+		// This funciton is here because it is in regards to the average for the store Item Constructor above. Will calculate the average based on ratings.
+		function calcAverage() {
+			var sum = 0;
+			var ave = 0;
+			var itemId = document.getElementById("addItemId").value;
+			itemId = itemId.toUpperCase();
+
+			for (var i = 0; i < storeItems.length; i++) {
+
+				if (itemId === storeItems[i].id) {
+					for (var j = 0; j < storeItems[i].reviews.length; j++) {
+						sum += storeItems[i].reviews[j].rating;
+					}
+					ave = sum / storeItems[i].reviews.length;
+					storeItems[i].rateAvg = ave.toFixed(1);
+					break;
+				}
+			}
+			console.log("Average rating: " + ave);
+		};
+
+		function CartItem(id, price, quantity, shipping) {
+			this.id = id; // String - product Id
+			this.price = price; // Number - item price
+			this.quantity = quantity; // Number - amount of the product in cart
+			this.shipping = shipping; // Number - cost of shipping for item
+		};
+
+		function ReviewItem(review, rating) {
+			this.review = review; // String - review of product
+			this.rating = rating; // rating for product
+		};
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		// GLOBAL VARIABLES (2)
+
+		var storeItems = []; //Store item object
+		var cartItems = []; // Cart item object
+
+		// On load function calls
+
+		initial();
+		displayStoreItems();
+		displayEmptyCheckout();
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		//EVENT LISTENERS FOR THE BUTTONS 
+
+		document.getElementById("detailsbtn").addEventListener("click", function () {
+			itemDetail();
+		});
+		document.getElementById("addItembtn").addEventListener("click", function () {
+			addToCart();
+		});
+		document.getElementById("removebtn").addEventListener("click", function () {
+			removeCart();
+		});
+		document.getElementById("addReviewbtn").addEventListener("click", function () {
+			addReview();
+		});
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		// ADDING NEW OPTIONS TO THE DISPLAY FILTER SELECT OPTION LIST - THESE ARE RELATED TO THE STORE PRODCUTS
+		var catOption = document.createElement('option');
+		var catText = document.createTextNode('Cat Supplies');
+		catOption.appendChild(catText);
+		displayFilter.appendChild(catOption);
+
+		var dogOption = document.createElement('option');
+		var dogText = document.createTextNode('Dog Supplies');
+		dogOption.appendChild(dogText);
+		displayFilter.appendChild(dogOption);
+
+		var fishOption = document.createElement('option');
+		var fishText = document.createTextNode('Fish Supplies');
+		fishOption.appendChild(fishText);
+		displayFilter.appendChild(fishOption);
+
+		var birdOption = document.createElement('option');
+		var birdText = document.createTextNode('Bird Supplies');
+		birdOption.appendChild(birdText);
+		displayFilter.appendChild(birdOption);
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		// Function for when page loads: Display current day/time / create stor items array with at least 15 item objects varying data // call function to display store items array // call fucntion display cart items array
+
+		function initial() {
+			//Modify the span for the time when webpage is accessed!
+			var dateSpan = document.getElementById("dateArea");
+			dateSpan.innerHTML = new Date();
+
+			// Store Items created
+			var cat1 = new StoreItem("CA01", "Litter Box Robot", 199.99, 20, 2, "Cat Supplies", 49.99, [], "You tired of Scooping? Enjoy the satisfaction of this High Quality WiFi-enabled, self-cleaning, scent free litter box!", "images/litterbox.jpg");
+			var cat2 = new StoreItem("CA02", "Cat Claw Scratcher + Toy", 49.99, 36, 4, "Cat Supplies", 29.99, [], "Keep your Cats Nails Healthy and Happy! Long lasting material, entertaining, and nail beneficial for your feline companion!", "images/catscratch.jpg");
+			var cat3 = new StoreItem("CA03", "Mr.Fancy Cat Jacket", 12.99, 42, 10, "Cat Supplies", 9.99, [], "Dress up your Cat with Fashion-(Mr.Fancy), High Quality, Style: Plad, Color: Blue, Fits: Medium-Large, Limited Edition", "images/catjacket.jpg");
+			var cat4 = new StoreItem("CA04", "Easy-to-Clean Cat Dish", 5.99, 64, 20, "Cat Supplies", 4.99, [], "Make your time count with the easy to clean cat dish. Built with quality and durable material! Long lasting, elegant design, built to perfection.", "images/catdish.jpg");
+
+			var dog1 = new StoreItem("DO01", "The Perfect Dog Bed", 129.99, 50, 2, "Dog Supplies", 29.99, [], "High Quality Material, Washing Machine Safe, Scratch Proof", "images/dogbed.jpg");
+			var dog2 = new StoreItem("DO02", "x5 Pack Dog Food", 9.99, 100, 10, "Dog Supplies", 4.99, [], "High Protein, Improved Health, Muscle Growth, Made with Real Chicken", "images/dogfood.jpg");
+			var dog3 = new StoreItem("DO03", "Dog Stuff Toy", 4.99, 83, 5, "Dog Supplies", 2.99, [], "Dog Friendly, High Quality Material, Keep your dog satisfied, Entertainable", "images/dogstufftoy.jpg");
+			var dog4 = new StoreItem("DO04", "x20 Pack Dog Treats", 14.99, 58, 10, "Dog Supplies", 4.99, [], "Healthy Treats, Natural Ingredients, Helps Teeth Improvement, Helps Bad Breath", "images/dogtreat.jpg");
+
+			var bird1 = new StoreItem("BI01", "Natural Bird Food", 14.99, 100, 5, "Bird Supplies", 3.99, [], "All Natural Bird Food Mix, Great for your birds health and satisfaction, Health Beneficial, 1.4kg Bag", "images/birdfood.jpg");
+			var bird2 = new StoreItem("BI02", "Hanging Bird Mirror", 3.99, 80, 6, "Bird Supplies", 0.99, [], "Quick Connect and Release! Toxic free material, Break Proof Mirror", "images/birdhangmirror.jpg");
+			var bird3 = new StoreItem("BI03", "Quick Attach Bird Stand", 2.99, 150, 10, "Bird Supplies", 0.99, [], "Easy to snap on to your cage! Quick release! Toxic free material, Long-Lasting", "images/birdstandingpoll.jpg");
+
+			var fish1 = new StoreItem("FI01", "Fish Bowl Cleaner Bottle", 4.99, 75, 5, "Fish Supplies", 1.99, [], "Natural fish bowl cleaner! 3 Drops per week for long lasting cleaning! Make life easier with a squeeze of a bottle!", "images/fishbowlcleaner.jpg");
+			var fish2 = new StoreItem("FI02", "Fish Pirate Display", 14.99, 50, 2, "Fish Supplies", 2.99, [], "Pirate Resin Display. Durability and High Quality. Enjoy a new addition to your waterlife!", "images/fishdisplay.jpg");
+			var fish3 = new StoreItem("FI03", "Fish Tank Pebbles", 9.99, 162, 10, "Fish Supplies", 2.99, [], "1kg Fish Pebbles Bag. Long lasting high quality durable pebbles! Clean elegant look!", "images/fishtankpebbles.jpg");
+			var fish4 = new StoreItem("FI04", "Starter Fish Tank", 29.99, 94, 2, "Fish Supplies", 4.99, [], "Your first fish starter kit is here! Comes with everything you need to give your fish a new home! Light up your tank at night!", "images/singlefishtank.jpg");
+
+			storeItems.push(cat1, cat2, cat3, cat4, dog1, dog2, dog3, dog4, bird1, bird2, bird3, fish1, fish2, fish3, fish4); //Store Items into global array. (storeItems)
+
+		}
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		function displayStoreItems() {
+			//Empty array to store selected categories by user
+			var selectedCat = [];
+
+			var userSelect = document.getElementById("displayFilter").value; // Choice from options by user
+			var statusAll = document.getElementById("displayFilter").options.item(0).text; // The status for all store items
+
+			// Parent of the table being created where will be outputed on the page based off id. Cleared  as well.
+			var tableParent = document.getElementById("inventoryOutput");
+			tableParent.innerHTML = "";
+
+			// Table and Body created
+			var tableDisplay = document.createElement("table");  //Parent Node
+			var tableBody = document.createElement("tbody"); //Child Node
+			tableBody.className = "tableStore";
+			//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			//Header elements created out side for loop. 
+			var headerRow = document.createElement("tr"); // Header Row 
+			var headId = document.createElement("th");
+			var headName = document.createElement("th");
+			var headPrice = document.createElement("th");
+			var headQuantity = document.createElement("th");
+			var headMax = document.createElement("th");
+			var headCat = document.createElement("th");
+			var headImage = document.createElement("th");
+			var headAddQty = document.createElement("th");
+
+			headId.innerHTML = "ID";
+			headName.innerHTML = "Product Name";
+			headPrice.innerHTML = "Price";
+			headQuantity.innerHTML = "Quantity On Hand";
+			headMax.innerHTML = "Max";
+			headCat.innerHTML = "Category";
+			headImage.innerHTML = "Image";
+
+
+			headerRow.appendChild(headId);
+			headerRow.appendChild(headName);
+			headerRow.appendChild(headPrice);
+			headerRow.appendChild(headQuantity);
+			headerRow.appendChild(headMax);
+			headerRow.appendChild(headCat);
+			headerRow.appendChild(headImage);
+
+			tableBody.appendChild(headerRow); // ADDED HEADER CONTENTS TO TABLE BODY
+			//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			//Finds the selected storeItems based on user selection from dropdown category menu.
+			for (var i = 0; i < storeItems.length; i++) {
+				if (storeItems[i].category === userSelect) {
+					selectedCat.push(storeItems[i]);
+				}
+				else if (userSelect === statusAll) {
+					selectedCat.push(storeItems[i]);
+				}
+			}
+			//Table creation 
+			for (var j = 0; j < selectedCat.length; j++) {
+				var product = selectedCat[j]; // CURRENT PRODUCT storeItems[i];
+
+				//Create a row
+				var tableRow = document.createElement("tr");
+
+				// Create Columns
+				var tableCol0 = document.createElement("td");
+				var tableCol1 = document.createElement("td");
+				var tableCol2 = document.createElement("td");
+				var tableCol3 = document.createElement("td");
+				var tableCol4 = document.createElement("td");
+				var tableCol5 = document.createElement("td");
+				var tableCol6 = document.createElement("td");
+				var tableCol7 = document.createElement("img");
+				tableCol7.className = "myPhoto";
+
+				//Modify 
+				tableCol0.innerHTML = product.id;
+				tableCol1.innerHTML = product.name;
+				tableCol2.innerHTML = "$" + product.price;
+				tableCol3.innerHTML = product.quantity;
+				tableCol4.innerHTML = product.maxPerCustomer;
+				tableCol5.innerHTML = product.category;
+				tableCol7.src = product.image;
+				tableCol6.appendChild(tableCol7);
+
+				//Append the columns to the rows created
+				tableRow.appendChild(tableCol0);
+				tableRow.appendChild(tableCol1);
+				tableRow.appendChild(tableCol2);
+				tableRow.appendChild(tableCol3);
+				tableRow.appendChild(tableCol4);
+				tableRow.appendChild(tableCol5);
+				tableRow.appendChild(tableCol6);
+
+				//Body of table taking the rows
+				tableBody.appendChild(tableRow);
+			}
+			// Append body t othe table then add to the output section
+			tableDisplay.appendChild(tableBody);
+			tableParent.appendChild(tableDisplay);
+			//Attributes for the border and size for table
+			tableDisplay.setAttribute("border", "1");
+			tableDisplay.setAttribute("width", "100%");
+		} // End of Function Display Store Items;
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		function displayCartItems() {
+			var cartParent = document.getElementById("cartOutput"); // The section for the Cart Items to be displayed.
+			cartParent.innerHTML = "";
+
+			var cartDisplay = document.createElement("table");  //Parent Node
+			var cartBody = document.createElement("tbody"); //Child Node
+
+			var headerCartRow = document.createElement("tr"); // Header Row 
+			var headCartId = document.createElement("th");
+			var headCartPrice = document.createElement("th");
+			var headCartQuantity = document.createElement("th");
+			var headCartSubtotal = document.createElement("th");
+
+			headCartId.innerHTML = "ID";
+			headCartPrice.innerHTML = "Price";
+			headCartQuantity.innerHTML = "Quantity";
+			headCartSubtotal.innerHTML = "Subtotal";
+
+			headerCartRow.appendChild(headCartId);
+			headerCartRow.appendChild(headCartPrice);
+			headerCartRow.appendChild(headCartQuantity);
+			headerCartRow.appendChild(headCartSubtotal);
+
+			cartBody.appendChild(headerCartRow);
+
+			for (var i = 0; i < cartItems.length; i++) {
+
+				var cartRow = document.createElement("tr");
+
+				var cartCol0 = document.createElement("td");
+				var cartCol1 = document.createElement("td");
+				var cartCol2 = document.createElement("td");
+				var cartCol3 = document.createElement("td");
+
+				cartCol0.innerHTML = cartItems[i].id;
+				cartCol1.innerHTML = "$" + cartItems[i].price;
+				cartCol2.innerHTML = cartItems[i].quantity;
+				cartCol3.innerHTML = "$" + (cartItems[i].price * cartItems[i].quantity).toFixed(2);
+
+				cartRow.appendChild(cartCol0);
+				cartRow.appendChild(cartCol1);
+				cartRow.appendChild(cartCol2);
+				cartRow.appendChild(cartCol3);
+
+				cartBody.appendChild(cartRow);
+			}
+
+			cartDisplay.appendChild(cartBody);
+			cartParent.appendChild(cartDisplay);
+
+			cartDisplay.setAttribute("border", "1");
+			cartDisplay.setAttribute("width", "100%");
+		}
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+		//Alternate function to display outline if there are no products in the cart array (user based)
+		//This is called when page loads.
+		function displayEmptyCheckout() {
+
+			//Clearing the innerhtmls
+			document.getElementById("cartOutput").innerHTML = "";
+			document.getElementById("cartCheckout").innerHTML = "";
+
+			var checkoutOutput = document.getElementById("cartOutput");
+			var checkoutAmounts = document.getElementById("cartCheckout");
+
+
+			var checkoutText = document.createElement("div");
+			var cartOutput1 = document.createElement("div");
+			var cartOutput2 = document.createElement("div");
+			var cartOutput3 = document.createElement("div");
+			var cartOutput4 = document.createElement("div");
+			var cartOutput5 = document.createElement("div");
+
+			checkoutText.innerHTML = "No Items Currently In Cart. Add Items to Cart";
+			cartOutput1.innerHTML = "<hr>" + "Items Subtotal: $0.00";
+			cartOutput2.innerHTML = "Estimated Shipping: $0.00" + "<br>";
+			cartOutput3.innerHTML = "<br>" + "Subtotal: $0.00";
+			cartOutput4.innerHTML = "Estimated Tax: $0.00";
+			cartOutput5.innerHTML = "Order Total: $0.00";
+
+			checkoutOutput.appendChild(checkoutText);
+			checkoutAmounts.appendChild(cartOutput1);
+			checkoutAmounts.appendChild(cartOutput2);
+			checkoutAmounts.appendChild(cartOutput3);
+			checkoutAmounts.appendChild(cartOutput4);
+			checkoutAmounts.appendChild(cartOutput5);
+		}
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		//Global variables for the calculations for products 	
+		const HSTTAX = 0.13;
+		var itemsSub = 0;
+		var shipEst = 0;
+		var subAll = 0;
+		var estTax = 0;
+		var orderTotal = 0;
+
+		function cartCalculate() {
+			var cartCheckOutDiv = document.getElementById("cartCheckout"); // The section for the Cart Items to be displayed.
+			cartCheckOutDiv.innerHTML = "";
+			var currencySelect = document.getElementById("currencySelector").value;
+
+			const HSTTAX = 0.13;
+			var itemsSub = 0;
+			var shipEst = 0;
+			var subAll = 0;
+			var estTax = 0;
+			var orderTotal = 0;
+
+			var checkoutText = document.createElement("div"); //Inner div created to display calculations
+			var cartOutput1 = document.createElement("div");
+			var cartOutput2 = document.createElement("div");
+			var cartOutput3 = document.createElement("div");
+			var cartOutput4 = document.createElement("div");
+			var cartOutput5 = document.createElement("div");
+
+			for (var i = 0; i < cartItems.length; i++) {
+
+				itemsSub += (cartItems[i].price * cartItems[i].quantity); //Initial subtotals without tax based off price of products and quantity
+				shipEst += (cartItems[i].shipping * cartItems[i].quantity);//Calculate shipping based off item ship multiplied by their quantity
+				subAll = (itemsSub + shipEst); // Initial subtotal + shipping cost for the total subtotal
+				estTax = (subAll * HSTTAX); // Taxe estimate based off subtotal (subAll)
+				orderTotal = (subAll + estTax);// Complete total of order with taxes 
+
+				cartOutput1.innerHTML = "<hr>" + "Items Subtotal: $" + itemsSub.toFixed(2); // Displays all calculations to 2 decimal places. 
+				cartOutput2.innerHTML = "Estimated Shipping: $" + shipEst.toFixed(2) + "<br>";
+				cartOutput3.innerHTML = "<br>" + "Subtotal: $" + subAll.toFixed(2);
+				cartOutput4.innerHTML = "Estimated Tax: $" + estTax.toFixed(2);
+				cartOutput5.innerHTML = "Order Total: $" + orderTotal.toFixed(2);
+
+				cartCheckOutDiv.appendChild(checkoutText);
+				cartCheckOutDiv.appendChild(cartOutput1);
+				cartCheckOutDiv.appendChild(cartOutput2);
+				cartCheckOutDiv.appendChild(cartOutput3);
+				cartCheckOutDiv.appendChild(cartOutput4);
+				cartCheckOutDiv.appendChild(cartOutput5);
+
+			} // End of For Loop 
+			if (cartItems.length === 0) { //THIS WILL BE CALLED WHEN CART ARRAY IS EMPTY
+				displayEmptyCheckout();
+			}
+		}// End Of Function
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		function currencyChange() {
+			var currencySelected = document.getElementById("currencySelector").value;	//Currency Selection USD/CAD
+
+			for (var i = 0; i < storeItems.length; i++) {
+				// If the currency selected is changed to USA - all storeItems will be multiplied by actual currency to day. 
+				if (currencySelected === "USD") {
+					storeItems[i].price = (storeItems[i].price * 0.7931565).toFixed(2);
+					document.getElementById("flagImage").src = "flags/USA.png";
+					displayCartItems();
+					displayStoreItems();
+				}
+				// If currency is swithed back to CAD will be justified with the proper currency change from USA to CAD
+				else if (currencySelected === "CAD") {
+					storeItems[i].price = (storeItems[i].price * 1.2607852).toFixed(2);
+					document.getElementById("flagImage").src = "flags/CANADA.png";
+					displayCartItems();
+					displayStoreItems();
+				}
+			}
+
+			//Cart Items currency change between the two
+			for (var j = 0; j < cartItems.length; j++) {
+				if (currencySelected === "USD") {
+					cartItems[j].price = (cartItems[j].price * 0.7931565).toFixed(2);
+					cartItems[j].shipping = (cartItems[j].shipping * 0.7931565).toFixed(2); //Had to implement changes to the shipping based off all items have different ship costs
+					cartItems[j].orderTotal = (cartItems[j].orderTotal * 0.7931565).toFixed(2); // Total adjusted appropriately 
+
+					cartCalculate()
+					displayCartItems();
+				}
+				else if (currencySelected === "CAD") {
+					cartItems[j].price = (cartItems[j].price * 1.2607852).toFixed(2);
+					cartItems[j].shipping = (cartItems[j].shipping * 1.2607852).toFixed(2);
+					cartItems[j].orderTotal = (cartItems[j].orderTotal * 1.2607852).toFixed(2);
+
+					cartCalculate()
+					displayCartItems();
+				}
+			}
+			if (cartItems.length === 0) { //THIS WILL BE CALLED WHEN CART ARRAY IS EMPTY
+				displayEmptyCheckout();
+			}
+		}
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		function addToCart() {
+			var toMuchItem = document.getElementById("error1");
+			toMuchItem.innerHTML = "";
+			// This is the Item value inputed by the user and the quantity: gathered.
+			var addItem = document.getElementById("addItemId").value;
+			addItem = addItem.toUpperCase();
+			var addQuant = parseInt(document.getElementById("addItemQty").value);
+			// Boolean 
+			var inCart = false;
+			var inStore = false;
+			//Search through all the storeItems avaialble
+			for (var i = 0; i < storeItems.length; i++) { // start goes through the storeitems list 
+				//Check if the user item input is in the store list
+				if (addItem === storeItems[i].id) {
+					var productId = storeItems[i].id; // finds the id of specific storeitem 
+					var productPrice = storeItems[i].price; // price of specific storeitem
+					var productShipping = storeItems[i].shippingCost; // shipping cost of the specific store item
+					var productOnHand = storeItems[i].quantity; // quantity available for the specific item
+					var productMax = storeItems[i].maxPerCustomer;  // maximum allowed per customer for specific item
+					var productQuant = 0; // counter used for the amount for cartItemChoice quantity (used to add)
+					inStore = true;
+					// Create new object to add to the cartItems empty array;
+					var cartItemChoice = new CartItem(productId, productPrice, productQuant, productShipping);
+
+					//Checks through cartItems array items
+					for (var j = 0; j < cartItems.length; j++) {
+						//If user input is in the cart items with same ID. It is true that the item is in the cart.
+						if (addItem === cartItems[j].id) {
+							inCart = true;
+							var cartLocation = j; // the specific cart item
+							console.log("IN CART");
+						}
+					}
+					// If it is not in the cart  (in cart is false)
+					if (inCart === false && addQuant > 0) {
+						cartItems.push(cartItemChoice);
+						var cartLocation = cartItems.length - 1; // finds the specific cart item location
+						console.log("NOT IN CART");
+					}
+					if ((cartItems.length != 0) && (cartItems[cartLocation].quantity === productMax)) { //VALIDATING IF THE QUANTITY MAXIMUM FOR STORE ITEM HAS BEEN REACHED BASED ON THE CART ITEM
+						var errorDiv = document.createElement("div")
+						errorDiv.innerHTML = ("Sorry, the max per customer for this product is " + productMax);
+						toMuchItem.appendChild(errorDiv);
+						alert("Sorry, the limit for this product is " + productMax);
+						return;
+					}
+					else if (addQuant >= productMax) { // CHECK IF THE USERS QUANTITY INOUT IS ABOVE OR EQUAL TO THE MAXIMUM AMOUNT FOR CUSTOMER
+						storeItems[i].quantity = storeItems[i].quantity - (productMax - cartItems[cartLocation].quantity);  // MODIFY THE QUANTITY IN THE STORE FOR THAT ITEM/ TAKES THE MAXIMUM AND SUBTRACTS FROM THE CART QUANTITY
+						cartItems[cartLocation].quantity = productQuant += productMax; // ADDS THE MAX FOR PRODUCT TO THE CART ITEM (IF USER PUTS 5 IT GOES TO THE MAX)
+
+						var errorDiv2 = document.createElement("div")
+						errorDiv2.innerHTML = ("You have reached the max per customer for this product of " + productMax);
+						toMuchItem.appendChild(errorDiv2);
+
+						alert("You have reached the maximum for this product! Thank you!");
+						displayCartItems(); // SHOWS THE TABLE WITH THE SPECIFIC ITEM AND QUANTITY
+						displayStoreItems(); // UPDATES THE STOREITEMS IN THE TABLE QUANITTY 
+						cartCalculate(); // CALCULATES THE SUBTOTALS ETC...
+						return;
+					}
+					// IF THE USER INPUT IS LESS THAN THE MAXIMUM FOR PRODUCT/ ALSO CHECKS IF THE USER INPUT + WHAT IS ALREADY IN THE QUANTITY FOR THAT ITEM IS LESS OR EQUAL TO THE MAXIMUM
+					else if (addQuant < productMax && (addQuant + cartItems[cartLocation].quantity <= productMax)) {
+						cartItems[cartLocation].quantity += (productQuant += addQuant); //MODIFY CART QUANTITY/ USE COUNTER TO ADD THE USERS INPUT IF ABOVE IS TRUE
+						storeItems[i].quantity = (storeItems[i].quantity - addQuant); // MODIFY THE STORE ITEM QUANTITY / STORE ITEM QUANTITY TAKE AWAY THE USER INPUT QUANTITY
+						displayCartItems();
+						displayStoreItems();
+						cartCalculate();
+						return;
+					}
+				}
+			}// end of for loop 
+			if (inStore === false) { // CHECK IF THE ITEM IS IN THE STORE BASED OFF USER INPUT. 
+				alert("Please insert a valid ID related to our products. Thank you");
+			}
+		}//End of Function;
+
+
+
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		function removeCart() {
+			var removeItem = document.getElementById("addItemId").value;
+			removeItem = removeItem.toUpperCase();
+			var removeQuant = parseInt(document.getElementById("addItemQty").value);
+
+			var newError = document.getElementById("error1");
+			newError.innerHTML = "";
+
+			itemInCart = false;
+			itemInStore = false;
+
+			for (var i = 0; i < storeItems.length; i++) { // start goes through the storeitems list 
+				//Check if the user item input is in the store list
+				if (removeItem === storeItems[i].id) {
+					var itemId = storeItems[i].id; // finds the id of specific storeitem
+					var itemOnHand = storeItems[i].quantity; // quantity available for the specific item
+					var itemMax = storeItems[i].maxPerCustomer;  // maximum allowed per customer for specific item
+
+					itemInStore = true;
+					//Checks through cartItems array items
+					for (var j = 0; j < cartItems.length; j++) {
+						//If user input is in the cart items with same ID. It is false that the item is in the cart.
+						if (removeItem === cartItems[j].id) {
+							itemInCart = false;
+							var removeLocation = j; // the specific cart item
+							console.log("IN CART");
+						}
+					}
+					// If it is not in the cart  (in cart is true) do....
+					if (itemInCart === true) {
+						var removeLocation = cartItems.length - 1; // finds the specific cart item location
+						console.log("NOT IN CART");
+					}
+					if ((cartItems.length != 0) && (removeQuant === cartItems[removeLocation].quantity)) {
+						storeItems[i].quantity = (storeItems[i].quantity + cartItems[removeLocation].quantity);
+						cartItems.splice(removeLocation, 1);
+						displayCartItems();
+						displayStoreItems();
+						cartCalculate();
+						return;
+					}
+					else if (cartItems.length != 0 && removeQuant >= cartItems[removeLocation].quantity) {
+						storeItems[i].quantity = (storeItems[i].quantity + cartItems[removeLocation].quantity);
+						cartItems.splice(removeLocation, 1); // working
+
+						var wereSorry = document.createElement("div");
+						wereSorry.innerHTML = "You have removed everything from your cart! We hope you find something that suits you and your best little buddies!"
+						newError.appendChild(wereSorry);
+						displayCartItems(); // SHOWS THE TABLE WITH THE SPECIFIC ITEM AND QUANTITY
+						displayStoreItems(); // UPDATES THE STOREITEMS IN THE TABLE QUANITTY 
+						cartCalculate(); // CALCULATES THE SUBTOTALS ETC...
+						return;
+					}
+					else if ((cartItems.length != 0) && (removeQuant < cartItems[removeLocation].quantity) && (cartItems[removeLocation].quantity != - 1)) {
+						storeItems[i].quantity = (storeItems[i].quantity + removeQuant);
+						cartItems[removeLocation].quantity = cartItems[removeLocation].quantity - removeQuant;
+						displayCartItems();
+						displayStoreItems();
+						cartCalculate();
+						//console.log("Remove specific quantity for that product");
+						return;
+					}
+				}
+			}// end of for loop 
+			if (cartItems.length === 0) {
+				var nothingInCart = document.createElement("div");
+				nothingInCart.innerHTML = "Sorry you must add something to your cart before removing an item! Thank you!"
+				newError.appendChild(nothingInCart);
+			}
+		};
+
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		// THE REVIEW AND STORE RATINS ARE IN METHODS IN THE STORE ITEM CONSTRUCTOR 
+		function itemDetail() {
+
+			var itemIdDetails = document.getElementById("addItemId").value;
+			itemIdDetails = itemIdDetails.toUpperCase();
+			calcAverage(); // Calling calc average function for store items under constructor
+
+			for (var i = 0; i < storeItems.length; i++) {
+
+				if (itemIdDetails === storeItems[i].id) {
+					alert("Item details: \nId: " + storeItems[i].id +
+						"\nName: " + storeItems[i].name +
+						"\nPrice: $" + storeItems[i].price +
+						"\nQuantity on hand: " + storeItems[i].quantity +
+						"\nMaximum per customer: " + storeItems[i].maxPerCustomer +
+						"\nCategory: " + storeItems[i].category +
+						"\nShipping Cost: $" + storeItems[i].shippingCost +
+						"\n\nDescription: " + storeItems[i].description +
+						"\n\n\n" + storeItems[i].customerReview() +
+						"\n\nAverage Rating: " + storeItems[i].rateAvg);
+				}
+			}
+		};
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		function addReview() {
+			var reviewId = document.getElementById("reviewId").value;
+			reviewId = reviewId.toUpperCase();
+			var userReview = document.getElementById("reviewDesc").value;
+
+			var reviewRating = Number(document.getElementById("reviewNum").value);
+
+			var error = document.getElementById("error");
+			error.innerHTML = "";
+
+			var addObj = new ReviewItem(userReview, reviewRating);
+
+			for (var i = 0; i < storeItems.length; i++) {
+
+				if ((reviewId === storeItems[i].id) && (userReview != "") && (reviewRating != "") && (reviewRating <= 5) && (reviewRating >= 0)) {
+					storeItems[i].reviews.push(addObj);
+					alert("Thank you for your review! We look forward to seeing you again at BEST PET 4 LIFE");
+					return;
+				}
+				else if (reviewRating > 5 || reviewRating < 0) {
+					var tempDisp = document.createElement("p")
+					tempDisp.innerHTML = ("Please make sure all fields are filled and the rating is between 0 - 5. We appreciate you!");
+					error.appendChild(tempDisp);
+					return;
+				}
+				else if (userReview === "" || reviewId === "" || userReview === "") {
+					var tempDiv = document.createElement("div");
+					tempDiv.innerHTML = ("Sorry insufficient details have been entered! Please try again!");
+					error.appendChild(tempDiv);
+					return;
+				}
+			};
+
+			document.getElementById("error").value = "";
+			reviewId = document.getElementById("reviewId").value = "";
+			userReview = document.getElementById("reviewDesc").value = "";
+			reviewRating = document.getElementById("reviewNum").value = "";
+		};
+	</script>
+</body>
+
+</html>
